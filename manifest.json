@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "GradWiser for arXiv",
+  "description": "Open arXiv papers in GradWiser to read, annotate, and begin evidence-backed research.",
+  "version": "0.1.0",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://arxiv.org/abs/*",
+        "https://www.arxiv.org/abs/*",
+        "https://www.google.com/search*"
+      ],
+      "js": ["src/content.js"],
+      "css": ["src/content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

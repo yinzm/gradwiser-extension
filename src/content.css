@@ -1,0 +1,48 @@
+.gradwiser-import-button {
+  all: initial;
+  appearance: none;
+  align-items: center;
+  background: #fffdf8;
+  border: 1px solid #283593;
+  border-radius: 999px;
+  box-sizing: border-box;
+  color: #283593;
+  cursor: pointer;
+  display: inline-flex;
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  padding: 6px 10px;
+  text-align: center;
+  text-decoration: none;
+  transform: none;
+  white-space: nowrap;
+  writing-mode: horizontal-tb;
+}
+
+.gradwiser-import-button:hover,
+.gradwiser-import-button:focus-visible {
+  background: #eef0ff;
+  outline: 2px solid #283593;
+  outline-offset: 2px;
+}
+
+.gradwiser-import-button--arxiv {
+  background: #283593;
+  border-radius: 2px;
+  color: #fff;
+  justify-content: center;
+  margin: 0;
+  width: 100%;
+}
+
+.gradwiser-import-button--arxiv:hover,
+.gradwiser-import-button--arxiv:focus-visible {
+  background: #1f2a78;
+  color: #fff;
+}
+
+.gradwiser-arxiv-entry-point {
+  margin-bottom: 6px;
+}
