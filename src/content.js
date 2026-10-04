@@ -4,6 +4,8 @@
   const { parsePaperUrl, browserLocale, paperUrl, linkCopy } =
     globalThis.GradWiserPaperLink;
   const ENTRY_ATTRIBUTE = "data-gradwiser-entry";
+  const TITLE_ROW_CLASS = "gradwiser-google-title-row";
+  const STACKED_ROW_CLASS = "gradwiser-google-title-row--stacked";
   const SCAN_DELAY = 80;
   const googleEntries = new Map();
   let arxivEntry = null;
@@ -18,12 +20,14 @@
 
   function updateLink(link, identity) {
     const locale = browserLocale(navigator);
-    const { text, label } = linkCopy(locale);
+    const { text, label, hint } = linkCopy(locale);
     const href = paperUrl(identity, locale);
+    const caption = link.querySelector(".gradwiser-link-caption") || link;
     if (link.getAttribute("href") !== href) link.setAttribute("href", href);
-    if (link.textContent !== text) link.textContent = text;
+    if (caption.textContent !== text) caption.textContent = text;
     if (link.getAttribute("aria-label") !== label)
       link.setAttribute("aria-label", label);
+    if (link.title !== hint) link.title = hint;
     if (link.lang !== locale) link.lang = locale;
   }
 
@@ -71,9 +75,17 @@
     style.textContent = `
       :host {
         all: initial;
-        display: block;
-        margin: 6px 0 4px;
-        text-align: right;
+        display: inline-flex;
+        grid-column: 2;
+        grid-row: 1;
+        align-self: start;
+        margin-block-start: var(--gradwiser-title-offset, 0px);
+        max-width: 100%;
+      }
+      :host([data-layout="stacked"]) {
+        grid-column: 1;
+        grid-row: 2;
+        margin: 6px 0 2px;
       }
       a {
         all: initial;
@@ -82,30 +94,52 @@
         align-items: center;
         max-width: 100%;
         border: 1px solid #4434bf;
-        border-radius: 999px;
+        gap: 5px;
+        background: #f6f4ff;
+        border-radius: 6px;
         color: #4434bf;
         cursor: pointer;
         direction: ltr;
         font-family: Arial, sans-serif;
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 600;
-        line-height: 1.4;
-        padding: 6px 10px;
+        line-height: 18px;
+        padding: 3px 8px;
         text-align: center;
         text-decoration: none;
         unicode-bidi: isolate;
-        white-space: normal;
+        white-space: nowrap;
         writing-mode: horizontal-tb;
       }
+      svg { width: 14px; height: 14px; flex: none; }
       a:hover, a:focus-visible {
-        background: #f0edff;
+        background: #ede9ff;
         outline: 2px solid #4434bf;
         outline-offset: 2px;
       }
     `;
     const link = createLink(identity);
+    const caption = document.createElement("span");
+    caption.className = "gradwiser-link-caption";
+    caption.textContent = link.textContent;
+    const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    icon.setAttribute("viewBox", "0 0 24 24");
+    icon.setAttribute("fill", "none");
+    icon.setAttribute("stroke", "currentColor");
+    icon.setAttribute("stroke-width", "1.8");
+    icon.setAttribute("stroke-linecap", "round");
+    icon.setAttribute("stroke-linejoin", "round");
+    icon.setAttribute("aria-hidden", "true");
+    icon.setAttribute("focusable", "false");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute(
+      "d",
+      "M7 18 3 21V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H7M7 8h10M7 12h7",
+    );
+    icon.append(path);
+    link.replaceChildren(icon, caption);
     shadow.append(style, link);
-    return { host, link };
+    return { host, link, container: null, heading: null };
   }
 
   function hasTransformedAncestor(element) {
@@ -125,7 +159,16 @@
   function googleTitleContainer(titleLink, root) {
     if (titleLink.closest("[data-text-ad], [data-ad], [data-pla]")) return null;
     const row = titleLink.closest(".yuRUbf");
-    if (row && root.contains(row) && row.querySelectorAll("h3").length === 1) {
+    const hasSingleContent = (node) =>
+      [...node.children].filter((child) => !child.hasAttribute(ENTRY_ATTRIBUTE))
+        .length === 1;
+    if (row) {
+      if (
+        !root.contains(row) ||
+        row.querySelectorAll("h3").length !== 1 ||
+        !hasSingleContent(row)
+      )
+        return null;
       return hasTransformedAncestor(row) ? null : row;
     }
     // Fail closed for unknown multi-result wrappers. The fallback must contain
@@ -137,9 +180,70 @@
     ) {
       if (node.tagName === "A" || node.querySelectorAll("h3").length !== 1)
         return null;
-      if (!hasTransformedAncestor(node)) return node;
+      if (hasSingleContent(node) && !hasTransformedAncestor(node)) return node;
     }
     return null;
+  }
+
+  function releaseGoogleLayout(entry) {
+    entry.container?.classList.remove(TITLE_ROW_CLASS, STACKED_ROW_CLASS);
+    for (const node of [entry.container, entry.heading, entry.host]) {
+      if (node) resizeObserver?.unobserve(node);
+    }
+  }
+
+  function firstTitleGlyph(heading) {
+    const walker = document.createTreeWalker(heading, NodeFilter.SHOW_TEXT);
+    for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+      const index = text.textContent.search(/\S/);
+      if (index < 0) continue;
+      const range = document.createRange();
+      range.setStart(text, index);
+      range.setEnd(text, index + 1);
+      const rect = range.getBoundingClientRect?.();
+      if (rect?.width && rect.height) return rect;
+    }
+    const rect = heading.getBoundingClientRect();
+    const style = getComputedStyle(heading);
+    return {
+      top: rect.top + (parseFloat(style.paddingTop) || 0),
+      height: parseFloat(style.lineHeight) || 24,
+    };
+  }
+
+  function layoutGoogleEntry(entry, container, heading) {
+    if (entry.container !== container || entry.heading !== heading) {
+      releaseGoogleLayout(entry);
+      entry.container = container;
+      entry.heading = heading;
+    }
+    container.classList.add(TITLE_ROW_CLASS);
+    if (entry.host.parentElement !== container) container.append(entry.host);
+    const stacked =
+      window.innerWidth < 600 || container.getBoundingClientRect().width < 480;
+    container.classList.toggle(STACKED_ROW_CLASS, stacked);
+    entry.host.setAttribute("data-layout", stacked ? "stacked" : "inline");
+    if (stacked) {
+      entry.host.style.removeProperty("--gradwiser-title-offset");
+    } else {
+      // Google can invert the title's ancestors. Measure its first visible
+      // glyph in the rendered page instead of inheriting that transform.
+      const glyph = firstTitleGlyph(heading);
+      const offset = Math.max(
+        0,
+        glyph.top -
+          container.getBoundingClientRect().top +
+          (glyph.height - entry.link.getBoundingClientRect().height) / 2,
+      );
+      const value = `${Math.round(offset * 100) / 100}px`;
+      if (
+        entry.host.style.getPropertyValue("--gradwiser-title-offset") !== value
+      ) {
+        entry.host.style.setProperty("--gradwiser-title-offset", value);
+      }
+    }
+    for (const node of [container, heading, entry.host])
+      resizeObserver?.observe(node);
   }
 
   function syncGoogleEntries() {
@@ -159,23 +263,24 @@
       const container = googleTitleContainer(titleLink, root);
       if (!container || usedContainers.has(container)) continue;
       usedContainers.add(container);
-      desired.set(titleLink, { identity, container });
+      desired.set(titleLink, { identity, container, heading });
     }
 
     for (const [titleLink, entry] of googleEntries) {
       if (!desired.has(titleLink)) {
+        releaseGoogleLayout(entry);
         entry.host.remove();
         googleEntries.delete(titleLink);
       }
     }
-    for (const [titleLink, { identity, container }] of desired) {
+    for (const [titleLink, { identity, container, heading }] of desired) {
       let entry = googleEntries.get(titleLink);
       if (!entry) {
         entry = createGoogleEntry(identity);
         googleEntries.set(titleLink, entry);
       }
       updateLink(entry.link, identity);
-      if (entry.host.parentElement !== container) container.append(entry.host);
+      layoutGoogleEntry(entry, container, heading);
     }
   }
 
@@ -200,6 +305,11 @@
     )
       scheduleScan();
   });
+
+  const resizeObserver =
+    typeof ResizeObserver === "function"
+      ? new ResizeObserver(scheduleScan)
+      : null;
 
   function observe() {
     observer.observe(document.documentElement, {
@@ -232,9 +342,11 @@
   }
 
   window.addEventListener("languagechange", scheduleScan);
+  window.addEventListener("resize", scheduleScan);
   window.addEventListener("pagehide", () => {
     paused = true;
     observer.disconnect();
+    resizeObserver?.disconnect();
     window.clearTimeout(scanTimer);
     scanTimer = null;
   });

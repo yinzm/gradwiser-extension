@@ -6,13 +6,13 @@
 
 - 开始前检查 `git status --short --branch` 和 `git -C ../gradwiser status --short --branch`；修改前查看目标文件 diff，保留无关用户改动。
 - 先读 [README.md](README.md) 与 [首发约定](docs/first-release.md)，以当前代码和用户要求确认实现状态，不把计划当作已实现功能。
-- `manifest.json`：匹配页面、资源顺序与扩展版本；`src/paper-link.js`：身份解析、公共地址与语言规则；`src/content.js`：页面注入与动态生命周期；`src/content.css`：arXiv 链接样式。Google 样式位于 Shadow DOM。
+- `manifest.json`：匹配页面、资源顺序与扩展版本；`src/paper-link.js`：身份解析、公共地址与语言规则；`src/content.js`：页面注入与动态生命周期；`src/content.css`：arXiv 链接与 Google 标题行网格样式。Google 链接自身样式位于 Shadow DOM。
 - 运行时是无构建、无依赖的原生 JS，直接加载本目录。Node 22+ 与 pnpm 仅用于开发测试，命令以本仓库 `package.json` 为准；jsdom 不随扩展发布。不照搬主应用的框架、别名或 CI，不为普通修改附带迁移工具链。
 - 涉及主应用时先读其 [AGENTS.md](../gradwiser/AGENTS.md)，分别检查和验证两个仓库；只改扩展时不要求主应用构建。
 
 ## 产品与仓库边界
 
-- 扩展仅为受支持的 arXiv 摘要页与 Google 搜索结果提供“在 GradWiser 中打开”入口；识别新版、旧版 arXiv ID，并保留显式版本。
+- 扩展为受支持的 arXiv 摘要页与 Google 搜索结果提供“与论文 AI 对话 / AI Chat with Paper”入口；识别新版、旧版 arXiv ID，并保留显式版本。提示明确 GradWiser 与摘要落地，文案和辅助标签不添加登录提醒；不暗示点击会直接发送 AI 请求。
 - 当前注入范围为 `arxiv.org/abs/*`、`www.arxiv.org/abs/*` 和 `www.google.com/search*` 的 HTTPS 页面，以 manifest 为准。
 - 扩展只构造当前公共摘要地址：英文 `https://gradwiser.com/abs/<id>`，中文 `https://gradwiser.com/zh/abs/<id>`。不使用或维护旧导入协议、source/UTM 参数或 fallback；不登录、不调用 API、不自动创建私人阅读状态。论文解析、PDF 阅读及私人操作认证由主应用负责。
 - 不擅自加入 PDF 查看器注入、其他论文来源或 Google 域名、AI 问答、书签、笔记、账户读取或持久化阅读功能。扩大范围先询问用户，并同步对应文档。
@@ -31,9 +31,9 @@
 ## DOM 与交互约定
 
 - 注入非侵入式入口，不替换原站链接、不阻止原站操作、不污染原站全局样式。使用 `gradwiser-` 命名和明确的注入标记，重复扫描不得产生重复入口。
-- arXiv 入口放在 `Access Paper` 列表首位；Google 入口跟随对应结果标题、处于结果正常文档流中，滚动时不悬浮到其他结果。
+- arXiv 入口放在 `Access Paper` 列表首位；Google 紧凑入口与标题首行同排，仍处于结果正常文档流中。仅对安全的单内容标题容器应用可撤销网格，不重排原有标题/来源子树；长标题自然折行，窄屏换到标题下方，删除入口时恢复原布局。
 - Google 入口沿用 Shadow DOM 样式隔离，注意祖先 transform 不受 Shadow DOM 隔离保护。选择器和布局变化需核对真实页面，不能仅凭固定类名猜测成功。
-- 动态页面处理需检查重复注入、搜索结果变化、旧链接残留和 MutationObserver 自触发；避免无界递归、重复监听与不必要的全页扫描。
+- 动态页面处理需检查重复注入、搜索结果变化、旧链接残留和 MutationObserver 自触发；ResizeObserver、resize 与换语言需更新对齐，移除结果和 pagehide 时释放观察。避免无界递归、重复监听与不必要的全页扫描。
 - 使用语义化 button/link，保留键盘操作、可见焦点与可理解的 accessible name；文案调整同步检查页面文本和辅助标签。
 - 使用浏览器首选语言选择文案、辅助标签和目的路径：`navigator.language` 为 `zh`/`zh-*` 时使用中文与 `/zh/abs/`，其他或缺失时使用英文与 `/abs/`；仅当 language 缺失时回退到 languages[0]。不根据页面语言或搜索 query 猜测语言，不照搬主应用的国际化框架。
 

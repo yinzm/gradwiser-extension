@@ -87,8 +87,16 @@
 
   function linkCopy(locale) {
     return locale === "zh"
-      ? { text: "在 GradWiser 中打开", label: "在 GradWiser 中打开这篇论文" }
-      : { text: "Open in GradWiser", label: "Open this paper in GradWiser" };
+      ? {
+          text: "与论文 AI 对话",
+          label: "在 GradWiser 中与这篇论文 AI 对话",
+          hint: "GradWiser · 打开论文摘要",
+        }
+      : {
+          text: "AI Chat with Paper",
+          label: "Chat with this paper in GradWiser",
+          hint: "GradWiser · Open the paper abstract.",
+        };
   }
 
   // Content scripts share an isolated world, not the host page's JS globals.

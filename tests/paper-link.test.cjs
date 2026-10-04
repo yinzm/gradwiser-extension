@@ -137,7 +137,18 @@ for (const [language, locale] of [
     );
     assert.equal(
       linkCopy(locale).text,
-      locale === "zh" ? "在 GradWiser 中打开" : "Open in GradWiser",
+      locale === "zh" ? "与论文 AI 对话" : "AI Chat with Paper",
+    );
+    assert.match(linkCopy(locale).hint, /GradWiser/);
+    assert.equal(
+      linkCopy(locale).hint,
+      locale === "zh"
+        ? "GradWiser · 打开论文摘要"
+        : "GradWiser · Open the paper abstract.",
+    );
+    assert.doesNotMatch(
+      `${linkCopy(locale).label} ${linkCopy(locale).hint}`,
+      /登录|sign.in/i,
     );
   });
 }

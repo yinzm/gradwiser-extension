@@ -1,21 +1,24 @@
 # GradWiser Browser Extension
 
-A standalone Chrome Manifest V3 extension that adds **Open in GradWiser** to
+A standalone Chrome Manifest V3 extension that adds **AI Chat with Paper** to
 arXiv abstract pages and recognized arXiv results on Google Search.
 
 A click opens the paper's **public abstract page** directly. No sign-in or
 private import is required to open the abstract. GradWiser handles metadata,
 version resolution, PDF reading, and authentication for private actions.
 The extension does not call APIs, read accounts, or create reading state.
+The entry highlights paper-grounded AI chat; its tooltip names GradWiser and
+the public abstract destination, without a login reminder. Clicking still opens
+the public abstract, not an automatic AI request or a forced login.
 
 ## Public links and language
 
 The browser's primary language selects both the entry text and destination:
 
-| Browser language                                | Entry text          | Destination                         |
-| ----------------------------------------------- | ------------------- | ----------------------------------- |
-| `zh`, including `zh-CN`, `zh-TW`, and `zh-Hant` | 在 GradWiser 中打开 | `https://gradwiser.com/zh/abs/<id>` |
-| Any other language or an unavailable preference | Open in GradWiser   | `https://gradwiser.com/abs/<id>`    |
+| Browser language                                | Entry text         | Destination                         |
+| ----------------------------------------------- | ------------------ | ----------------------------------- |
+| `zh`, including `zh-CN`, `zh-TW`, and `zh-Hant` | 与论文 AI 对话     | `https://gradwiser.com/zh/abs/<id>` |
+| Any other language or an unavailable preference | AI Chat with Paper | `https://gradwiser.com/abs/<id>`    |
 
 Explicit versions are preserved: `1706.03762v7` opens that version. An ID
 without a version stays unversioned so the main site can resolve the latest
@@ -36,11 +39,15 @@ current/legacy IDs, positive explicit versions, and no credentials, source
 query/fragment, or ambiguous encoding. Supporting PDF/HTML result links does
 **not** mean injecting into PDF/HTML pages.
 
-The arXiv link is the first action in `Access Paper`. Google links use a Shadow
-Root for styling and remain in their result's normal document flow. Dynamic
-result updates reconcile changed targets, removed entries, and replaced result
-containers. Unknown unsafe layouts are skipped rather than injecting into an
-unrelated result.
+The arXiv link is the first action in `Access Paper`. Google uses a compact
+chat-icon link beside the title's first visible line, in the result's normal
+flow. The original title/source subtree stays intact in a reversible two-column
+grid; long titles wrap naturally, while viewports below 600px or title wrappers
+below 480px stack the entry beneath the title. Resize observation keeps the
+alignment correct after reflow. Google link styling stays in a Shadow Root.
+Dynamic updates reconcile changed targets, removed entries, and replaced result
+containers, restoring the original layout when an entry is removed. Unknown
+unsafe or multi-child title wrappers are skipped rather than rearranged.
 
 ## Local loading
 
@@ -53,8 +60,8 @@ unrelated result.
 
 No build is needed. `src/paper-link.js` provides identity, destination, and
 language functions; `src/content.js` adapts the supported pages. The manifest
-loads these native scripts in order. `src/content.css` styles arXiv links;
-Google link styles live in their Shadow Root.
+loads these native scripts in order. `src/content.css` styles arXiv links and
+the scoped Google title grid; Google link styles live in their Shadow Root.
 
 ## Development checks
 

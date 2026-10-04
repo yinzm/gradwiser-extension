@@ -34,3 +34,22 @@
 .gradwiser-arxiv-entry {
   margin-bottom: 6px;
 }
+
+/* Only single-title, single-content wrappers receive this reversible layout.
+   The original title/source subtree stays intact in the first grid column. */
+.gradwiser-google-title-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) max-content !important;
+  column-gap: 12px !important;
+  align-items: start !important;
+}
+
+.gradwiser-google-title-row > :not(.gradwiser-google-entry) {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.gradwiser-google-title-row--stacked {
+  grid-template-columns: minmax(0, 1fr) !important;
+}

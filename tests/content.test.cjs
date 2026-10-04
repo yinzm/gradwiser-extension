@@ -10,7 +10,7 @@ const scripts = ["src/paper-link.js", "src/content.js"].map((file) =>
   readFileSync(path.join(root, file), "utf8"),
 );
 
-function page(t, html, url, language = "en-US") {
+function page(t, html, url, language = "en-US", setup = () => {}) {
   const errors = [];
   const virtualConsole = new VirtualConsole();
   virtualConsole.on("jsdomError", (error) => errors.push(error.message));
@@ -34,6 +34,10 @@ function page(t, html, url, language = "en-US") {
       throw new Error(`Unexpected extension network/navigation: ${key}`);
     };
   }
+  const style = dom.window.document.createElement("style");
+  style.textContent = readFileSync(path.join(root, "src/content.css"), "utf8");
+  dom.window.document.head.append(style);
+  setup(dom.window);
   for (const script of scripts) dom.window.eval(script);
   return dom.window;
 }
@@ -71,8 +75,8 @@ function assertNativeLink(link, href, text, lang) {
   assert.equal(
     link.getAttribute("aria-label"),
     lang === "zh"
-      ? "在 GradWiser 中打开这篇论文"
-      : "Open this paper in GradWiser",
+      ? "在 GradWiser 中与这篇论文 AI 对话"
+      : "Chat with this paper in GradWiser",
   );
 }
 
@@ -91,7 +95,7 @@ test("arXiv uses a native localized public link as its first Access Paper action
   assertNativeLink(
     list.querySelector("a"),
     "https://gradwiser.com/zh/abs/hep-th/9901001v2",
-    "在 GradWiser 中打开",
+    "与论文 AI 对话",
     "zh",
   );
   w.document.body.append(w.document.createElement("p"));
@@ -140,14 +144,24 @@ test("Google only injects recognized result titles inside #rso, not ads or unrel
   const w = page(t, html, "https://www.google.com/search?q=arxiv", "zh-CN");
   assert.equal(entries(w).length, 1);
   const host = entries(w)[0];
-  assert.equal(host.parentElement.className, "yuRUbf");
+  assert.ok(host.parentElement.classList.contains("yuRUbf"));
+  assert.ok(
+    host.parentElement.classList.contains("gradwiser-google-title-row"),
+  );
+  assert.equal(w.getComputedStyle(host.parentElement).display, "grid");
+  assert.equal(
+    entryLink(host).querySelector("svg").getAttribute("aria-hidden"),
+    "true",
+  );
+  assert.equal(entryLink(host).title, "GradWiser · 打开论文摘要");
+  assert.doesNotMatch(entryLink(host).getAttribute("aria-label"), /登录/);
   assert.equal(host.closest(".result").id, "paper");
   assert.equal(host.closest("a"), null);
   assert.equal(host.closest("span[style]"), null);
   assertNativeLink(
     entryLink(host),
     "https://gradwiser.com/zh/abs/1706.03762v7",
-    "在 GradWiser 中打开",
+    "与论文 AI 对话",
     "zh",
   );
   assert.equal(
@@ -171,6 +185,7 @@ test("a reused Google title link updates version and removes the entry for non-a
   );
   title.href = "https://example.com/abs/1706.03762";
   await until(() => entries(w).length === 0);
+  assert.equal(w.document.querySelector(".yuRUbf").className, "yuRUbf");
   title.href = "https://export.arxiv.org/pdf/1706.03762v2.pdf";
   await until(() => entries(w).length === 1);
   assert.equal(
@@ -251,7 +266,7 @@ test("languagechange updates the existing entry's text, accessible name, and des
   assertNativeLink(
     entryLink(host),
     "https://gradwiser.com/abs/1706.03762v7",
-    "Open in GradWiser",
+    "AI Chat with Paper",
     "en",
   );
   Object.defineProperty(w.navigator, "language", {
@@ -264,8 +279,12 @@ test("languagechange updates the existing entry's text, accessible name, and des
   assertNativeLink(
     entryLink(host),
     "https://gradwiser.com/zh/abs/1706.03762v7",
-    "在 GradWiser 中打开",
+    "与论文 AI 对话",
     "zh",
+  );
+  assert.ok(
+    entryLink(host).querySelector("svg"),
+    "language changes preserve the chat icon",
   );
 });
 
@@ -306,6 +325,122 @@ test("pagehide pauses observation and pageshow reconciles browser back/forward r
   assert.ok(entryLink(entries(w)[0]).href.endsWith("v7"));
   w.dispatchEvent(new w.Event("pageshow"));
   assert.ok(entryLink(entries(w)[0]).href.endsWith("v1"));
+});
+
+test("Google aligns the compact entry with the first title line and stacks on narrow viewports", async (t) => {
+  const w = page(
+    t,
+    `<div id="rso">${result("paper")}</div>`,
+    "https://www.google.com/search?q=arxiv",
+    "en-US",
+    (w) => {
+      const row = w.document.querySelector(".yuRUbf");
+      row.getBoundingClientRect = () => ({ top: 100, width: 652 });
+      const heading = row.querySelector("h3");
+      heading.style.paddingTop = "10px";
+      heading.style.lineHeight = "28px";
+      heading.getBoundingClientRect = () => ({ top: 138, height: 94 });
+      w.HTMLAnchorElement.prototype.getBoundingClientRect = () => ({
+        height: 26,
+      });
+    },
+  );
+  const host = entries(w)[0];
+  const row = host.parentElement;
+  const originalTitle = row.querySelector(".title");
+  assert.equal(host.getAttribute("data-layout"), "inline");
+  assert.equal(host.style.getPropertyValue("--gradwiser-title-offset"), "49px");
+  assert.equal(originalTitle.parentElement.style.transform, "scaleY(-1)");
+  assert.equal(
+    row.children.length,
+    2,
+    "original content is not wrapped or moved out of the result",
+  );
+  Object.defineProperty(w, "innerWidth", { configurable: true, value: 390 });
+  w.dispatchEvent(new w.Event("resize"));
+  await until(() => host.getAttribute("data-layout") === "stacked");
+  assert.ok(row.classList.contains("gradwiser-google-title-row--stacked"));
+  assert.equal(host.style.getPropertyValue("--gradwiser-title-offset"), "");
+  Object.defineProperty(w, "innerWidth", { configurable: true, value: 1440 });
+  w.dispatchEvent(new w.Event("resize"));
+  await until(() => host.getAttribute("data-layout") === "inline");
+  assert.equal(row.querySelector(".title"), originalTitle);
+  originalTitle.href = "https://example.com/not-arxiv";
+  await until(() => entries(w).length === 0);
+  assert.equal(
+    row.className,
+    "yuRUbf",
+    "removing the entry restores the source layout",
+  );
+});
+
+test("Google measures rendered first-glyph alignment and releases resize observations", async (t) => {
+  let observer;
+  const observed = new Set();
+  const w = page(
+    t,
+    `<div id="rso">${result("paper")}</div>`,
+    "https://www.google.com/search?q=arxiv",
+    "en-US",
+    (w) => {
+      w.ResizeObserver = class {
+        constructor(callback) {
+          this.callback = callback;
+          observer = this;
+        }
+        observe(node) {
+          observed.add(node);
+        }
+        unobserve(node) {
+          observed.delete(node);
+        }
+        disconnect() {
+          observed.clear();
+        }
+      };
+      w.document.querySelector(".yuRUbf").getBoundingClientRect = () => ({
+        top: 100,
+        width: 652,
+      });
+      w.HTMLAnchorElement.prototype.getBoundingClientRect = () => ({
+        height: 26,
+      });
+      w.Range.prototype.getBoundingClientRect = () => ({
+        top: 160,
+        width: 10,
+        height: 25,
+      });
+    },
+  );
+  const host = entries(w)[0];
+  assert.equal(
+    host.style.getPropertyValue("--gradwiser-title-offset"),
+    "59.5px",
+  );
+  assert.equal(observed.size, 3);
+  w.Range.prototype.getBoundingClientRect = () => ({
+    top: 170,
+    width: 10,
+    height: 25,
+  });
+  observer.callback([]);
+  await until(
+    () => host.style.getPropertyValue("--gradwiser-title-offset") === "69.5px",
+  );
+  w.document.querySelector(".title").href = "https://example.com/not-arxiv";
+  await until(() => entries(w).length === 0);
+  assert.equal(observed.size, 0);
+});
+
+test("Google does not apply grid layout to unknown multi-child title wrappers", (t) => {
+  const w = page(
+    t,
+    '<div id="rso"><div class="outer"><div class="yuRUbf"><span style="transform:scaleY(-1)"><a href="https://arxiv.org/abs/1706.03762"><h3>Paper</h3></a></span><div>Other original content</div></div></div></div>',
+    "https://www.google.com/search?q=arxiv",
+  );
+  assert.equal(entries(w).length, 0);
+  assert.equal(w.document.querySelector(".yuRUbf").className, "yuRUbf");
+  assert.equal(w.document.querySelector(".outer").className, "outer");
 });
 
 test("unsupported pages and invalid arXiv identities do not get entries", (t) => {
