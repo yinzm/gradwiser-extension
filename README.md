@@ -1,41 +1,84 @@
 # GradWiser Browser Extension
 
-This is a standalone Chrome Manifest V3 extension. It adds an **Open in
-GradWiser** entry point to supported arXiv abstract pages and to recognized
-arXiv results on Google Search.
+A standalone Chrome Manifest V3 extension that adds **Open in GradWiser** to
+arXiv abstract pages and recognized arXiv results on Google Search.
 
-The extension is deliberately small: it never imports papers, reads account
-data, or calls AI providers itself. A user click opens GradWiser with the
-canonical arXiv URL; GradWiser then authenticates the user, performs the
-existing idempotent import, and opens the private paper workspace.
+A click opens the paper's **public abstract page** directly. No sign-in or
+private import is required to open the abstract. GradWiser handles metadata,
+version resolution, PDF reading, and authentication for private actions.
+The extension does not call APIs, read accounts, or create reading state.
 
-## Current scope
+## Public links and language
 
-- `arxiv.org/abs/*` and `www.arxiv.org/abs/*`
-- `www.google.com/search*` entries whose destination is a valid arXiv paper
-- Current-format and legacy arXiv identifiers, including explicit versions
-- No API keys, no broad host permissions, no PDF replacement, and no page data
-  transmitted before the user clicks
+The browser's primary language selects both the entry text and destination:
 
-Direct arXiv PDF viewer injection is intentionally deferred. Chrome generally
-renders PDFs in its own viewer, where normal webpage content scripts are not a
-reliable UI surface. The first release starts from the arXiv abstract page,
-which reliably carries the paper identity and version.
+| Browser language                                | Entry text          | Destination                         |
+| ----------------------------------------------- | ------------------- | ----------------------------------- |
+| `zh`, including `zh-CN`, `zh-TW`, and `zh-Hant` | 在 GradWiser 中打开 | `https://gradwiser.com/zh/abs/<id>` |
+| Any other language or an unavailable preference | Open in GradWiser   | `https://gradwiser.com/abs/<id>`    |
+
+Explicit versions are preserved: `1706.03762v7` opens that version. An ID
+without a version stays unversioned so the main site can resolve the latest
+version. Legacy IDs retain their slash, e.g. `/zh/abs/hep-th/9901001v2`.
+The links have no source, tracking, or import parameters.
+
+## Supported pages
+
+- HTTPS abstract pages on `arxiv.org` and `www.arxiv.org`.
+- `https://www.google.com/search*` (the `/search` page), for recognized arXiv
+  result titles inside the organic results area (`#rso`).
+- Search-result source links may use `arxiv.org`, `www.arxiv.org`, or
+  `export.arxiv.org`, with `abs`, `pdf`, or `html` paths. Valid Google `/url`
+  redirects are unwrapped locally with bounded depth.
+
+The parser follows the main site's public arXiv identity rules: HTTPS, valid
+current/legacy IDs, positive explicit versions, and no credentials, source
+query/fragment, or ambiguous encoding. Supporting PDF/HTML result links does
+**not** mean injecting into PDF/HTML pages.
+
+The arXiv link is the first action in `Access Paper`. Google links use a Shadow
+Root for styling and remain in their result's normal document flow. Dynamic
+result updates reconcile changed targets, removed entries, and replaced result
+containers. Unknown unsafe layouts are skipped rather than injecting into an
+unrelated result.
 
 ## Local loading
 
-1. Open `chrome://extensions`.
-2. Enable **Developer mode**.
-3. Choose **Load unpacked** and select this directory.
-4. Open an arXiv abstract page or a Google result containing an arXiv paper.
+1. Open `chrome://extensions` and enable **Developer mode**.
+2. Choose **Load unpacked** and select this directory.
+3. Visit an arXiv abstract page or a Google search with arXiv results.
+4. After changing code or the manifest, reload the extension and refresh the
+   target page. To check both languages, change the browser language and
+   refresh; the runtime also responds to `languagechange`.
 
-The destination route (`https://gradwiser.com/papers/import?source=…`) is
-implemented in the GradWiser app. It preserves the source URL through sign-in,
-calls the existing authenticated import API, then opens the private reader.
+No build is needed. `src/paper-link.js` provides identity, destination, and
+language functions; `src/content.js` adapts the supported pages. The manifest
+loads these native scripts in order. `src/content.css` styles arXiv links;
+Google link styles live in their Shadow Root.
 
-## Repository boundary
+## Development checks
 
-This folder is intentionally independent from the `gradwiser/` production app.
-It will maintain its own manifest, release notes, browser-store assets, and
-extension tests. The main app only needs a narrowly scoped, authenticated
-import-handoff route.
+Use Node 22+ and pnpm for test dependencies only:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm check
+pnpm test
+```
+
+Tests use Node's built-in runner and jsdom, covering URL/locale contracts,
+manifest resources, and DOM lifecycle regressions. jsdom is not shipped with
+the extension. These checks do not replace real browser acceptance; see the
+[public-entry contract](docs/first-release.md).
+
+## Boundaries
+
+No runtime dependencies, background worker, API keys, account access, storage,
+telemetry, or additional permissions. No extension-originated network requests
+before clicking. Native links support keyboard access, middle-click, and
+copying the destination, with `noopener noreferrer` isolation.
+
+This is an independent repository, not a subpackage of the GradWiser app. The
+extension uses current public routes only, with no old import-protocol fallback.
+PDF viewer injection, other search engines/Google domains, non-arXiv sources,
+and private management features are outside the current scope.

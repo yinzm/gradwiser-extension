@@ -1,48 +1,36 @@
-.gradwiser-import-button {
+.gradwiser-arxiv-entry .gradwiser-paper-link {
   all: initial;
-  appearance: none;
   align-items: center;
-  background: #fffdf8;
-  border: 1px solid #283593;
-  border-radius: 999px;
+  background: #4434bf;
+  border: 1px solid #4434bf;
+  border-radius: 2px;
   box-sizing: border-box;
-  color: #283593;
+  color: #fff;
   cursor: pointer;
+  direction: ltr;
   display: inline-flex;
   font-family: Arial, sans-serif;
   font-size: 13px;
   font-weight: 600;
-  line-height: 1.25;
+  justify-content: center;
+  line-height: 1.4;
+  max-width: 100%;
   padding: 6px 10px;
   text-align: center;
   text-decoration: none;
-  transform: none;
-  white-space: nowrap;
+  unicode-bidi: isolate;
+  white-space: normal;
+  width: 100%;
   writing-mode: horizontal-tb;
 }
 
-.gradwiser-import-button:hover,
-.gradwiser-import-button:focus-visible {
-  background: #eef0ff;
-  outline: 2px solid #283593;
+.gradwiser-arxiv-entry .gradwiser-paper-link:hover,
+.gradwiser-arxiv-entry .gradwiser-paper-link:focus-visible {
+  background: #382aa3;
+  outline: 2px solid #4434bf;
   outline-offset: 2px;
 }
 
-.gradwiser-import-button--arxiv {
-  background: #283593;
-  border-radius: 2px;
-  color: #fff;
-  justify-content: center;
-  margin: 0;
-  width: 100%;
-}
-
-.gradwiser-import-button--arxiv:hover,
-.gradwiser-import-button--arxiv:focus-visible {
-  background: #1f2a78;
-  color: #fff;
-}
-
-.gradwiser-arxiv-entry-point {
+.gradwiser-arxiv-entry {
   margin-bottom: 6px;
 }
