@@ -221,7 +221,12 @@ remains a separate closed-source service.** Its source, private APIs, and
 credentials are neither included nor required for extension development/tests.
 Publishing this repository does not publish or license the main site's code.
 
-An explicit license has not yet been selected for this extension. Do not assume
-permission to redistribute or modify it under an open-source license until a
-license is added. `package.json`'s `private: true` prevents accidental npm
-publication; it does not control GitHub visibility.
+The extension code and accompanying documentation are licensed under the
+[MIT License](LICENSE). You may use, modify, and redistribute them, including
+commercially, provided you retain the copyright and license notices.
+
+This license does not cover the closed-source main site or grant rights to
+GradWiser names, logos, or trademarks. Third-party logos, paper text, and website
+content shown in screenshots retain their respective owners' rights.
+`package.json`'s `private: true` prevents accidental npm publication; it does not
+control GitHub visibility.

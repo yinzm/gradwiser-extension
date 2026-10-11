@@ -1,6 +1,7 @@
 {
   "name": "gradwiser-extension",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "test": "node --test tests/*.test.cjs",
     "check": "node --check src/paper-link.js && node --check src/content.js"

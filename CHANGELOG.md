@@ -2,6 +2,9 @@
 
 ## Unreleased — public-source preparation
 
+- Adopt the MIT License for extension code and documentation; clarify that the
+  closed-source main site and brand rights are outside that license.
+
 - Make extension documentation and contributor instructions self-contained;
   remove current references to private main-site repository/source paths.
 - Document that the main site remains closed source and that public routes
