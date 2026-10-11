@@ -49,6 +49,14 @@ Dynamic updates reconcile changed targets, removed entries, and replaced result
 containers, restoring the original layout when an entry is removed. Unknown
 unsafe or multi-child title wrappers are skipped rather than rearranged.
 
+### Known anonymous Google limitation
+
+Some anonymous Google results use `/goto?url=<opaque token>` rather than a
+source URL or a supported `/url` redirect. Version `0.1.0` skips these results;
+its anonymous Google click flow has not passed acceptance. The extension does
+not fetch redirects or decode opaque tokens. See the [version record](CHANGELOG.md)
+for acceptance evidence and outstanding release checks.
+
 ## Local loading
 
 1. Open `chrome://extensions` and enable **Developer mode**.
