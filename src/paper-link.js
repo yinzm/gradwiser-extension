@@ -6,16 +6,17 @@
     "www.arxiv.org",
     "export.arxiv.org",
   ]);
-  // Keep identity validation aligned with GradWiser's public arxiv-id parser.
+  // Validate public arXiv identities locally; no private application dependency.
   const NEW_ID = /^([0-9]{2})(0[1-9]|1[0-2])\.([0-9]{4,5})(v[1-9][0-9]*)?$/i;
   const OLD_ID = /^([a-z-]+(?:\.[a-z-]+)?)\/([0-9]{7})(v[1-9][0-9]*)?$/i;
   const MAX_URL_LENGTH = 2048;
   const MAX_REDIRECTS = 4;
 
   function normalizeIdentity(raw) {
+    if (typeof raw !== "string" || raw.length > MAX_URL_LENGTH) return null;
     try {
       const decoded = decodeURIComponent(raw);
-      if (/[%\\?#]/.test(decoded)) return null;
+      if (/[%\\?#\s\u0000-\u001f\u007f]/.test(decoded)) return null;
       const id = decoded.replace(/\.pdf$/i, "");
       const modern = NEW_ID.exec(id);
       const legacy = OLD_ID.exec(id);
@@ -34,7 +35,8 @@
   }
 
   function parsePaperUrl(input, baseOrigin) {
-    if (typeof input !== "string") return null;
+    if (typeof input !== "string" || /[\u0000-\u001f\u007f]/.test(input))
+      return null;
     let value = input.trim();
     for (let depth = 0; depth <= MAX_REDIRECTS; depth++) {
       if (
@@ -42,20 +44,25 @@
         value.length > MAX_URL_LENGTH ||
         value.includes("#") ||
         value.includes("\\") ||
+        /[\u0000-\u0020\u007f]/.test(value) ||
         /(?:^|\/)(?:\.|%2e){1,2}(?:\/|%2f|$)/i.test(value)
       ) {
         return null;
       }
       try {
         const url = new URL(value, baseOrigin);
-        if (url.protocol !== "https:" || url.username || url.password) {
+        if (url.protocol !== "https:" || url.port || url.username || url.password) {
           return null;
         }
         if (url.hostname === "www.google.com" && url.pathname === "/url") {
-          const destination =
-            url.searchParams.get("url") || url.searchParams.get("q");
+          const urls = url.searchParams.getAll("url");
+          const queries = url.searchParams.getAll("q");
+          if (urls.length > 1 || queries.length > 1) return null;
+          if (urls.length && queries.length && urls[0] !== queries[0])
+            return null;
+          const destination = urls[0] || queries[0];
           if (!destination || depth === MAX_REDIRECTS) return null;
-          value = destination.trim();
+          value = destination;
           // A relative redirect destination belongs to Google, not the source page.
           baseOrigin = url.origin;
           continue;

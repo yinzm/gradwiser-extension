@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased — public-source preparation
+
+- Make extension documentation and contributor instructions self-contained;
+  remove current references to private main-site repository/source paths.
+- Document that the main site remains closed source and that public routes
+  are not an authorization boundary. Add security reporting, sensitive-file
+  handling and release-package guidance in `SECURITY.md`.
+- Ignore common local environment files, keys, databases and QA artifacts.
+- Reject nonstandard source/redirect ports, control characters, oversized
+  identities and duplicate/conflicting Google redirect destinations; add
+  regression tests. Opaque `/goto` results remain unsupported.
+- Add English/Chinese user guides, main-site capability introductions and three
+  reviewed product screenshots. Add extension icons and store listing drafts.
+- No new permissions, network calls, dependencies or manifest-version changes.
+
 ## 0.1.0 — unreleased baseline
 
 This records the current extension before work on anonymous Google `/goto`

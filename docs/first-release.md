@@ -9,7 +9,9 @@ resolution, switching to PDF, and authentication for private actions.
 ## Extension responsibilities
 
 1. Parse a supported source link locally into an arXiv identity, following
-   the main site's current public `src/modules/refactor/arxiv-id.ts` rules.
+   `src/paper-link.js` and its tests in this repository. Accept HTTPS on the
+   supported hosts with the standard port; reject credentials, control
+   characters, ambiguous redirect parameters and malformed identities.
    Preserve explicit versions; never invent a version for an unversioned ID.
 2. Select `zh` for the browser's primary `zh`/`zh-*` language, and `en` for
    other or missing languages. Use `navigator.language`, falling back to the
@@ -42,9 +44,10 @@ present the abstract without mandatory sign-in. Versions, PDF availability,
 loading/error states, and authentication for private actions belong to the
 main site. The extension must not reproduce or bypass those rules.
 
-No old import handoff or fallback is retained in the extension. Main-site
-private APIs remain the main application's responsibility and are not removed
-merely because the extension no longer uses them.
+The main site is a separate closed-source service. Extension development and
+verification do not require its source, credentials or private APIs. The
+extension uses public page navigation only, with no old import handoff or
+fallback. Opening a public page does not grant access to private actions.
 
 ## Acceptance checklist
 

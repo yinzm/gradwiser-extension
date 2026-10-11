@@ -3,6 +3,12 @@
   "name": "GradWiser for arXiv",
   "description": "Open arXiv papers directly in GradWiser, with English or Chinese selected from your browser language.",
   "version": "0.1.0",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "content_scripts": [
     {
       "matches": [

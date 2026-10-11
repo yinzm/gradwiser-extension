@@ -2,3 +2,25 @@
 *.zip
 dist/
 node_modules/
+
+# Local credentials and environment files (examples must contain placeholders).
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local data and QA artifacts; never include these in source or release packages.
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+*.log
+*.crx
+coverage/
+qa-artifacts/
+.local/

@@ -63,6 +63,14 @@ for (const input of [
   "https://user:password@arxiv.org/abs/1706.03762",
   "https://arxiv.org/abs/1706.03762?redirect=1",
   "https://arxiv.org/abs/1706.03762#section",
+  "https://arxiv.org:8443/abs/1706.03762",
+  "https://arxiv.org/abs/1706.03762%0a",
+  "https://arxiv.org/abs/1706.03762%00",
+  "https://arxiv.org/abs/1706.03762%20",
+  "https://arxiv.org/abs/1706.\n03762",
+  "https://arxiv.org/abs/1706.\t03762",
+  "https://arxiv.org/abs/1706.03762\u007f",
+  "https://arxiv.org/abs/1706. 03762",
   "https://arxiv.org/abs/1706.03762v0",
   "https://arxiv.org/abs/1706.03762v01",
   "https://arxiv.org/abs/1700.03762",
@@ -113,6 +121,32 @@ test("Google redirects are bounded, validated, and never forwarded as source dat
   assert.equal(
     parsePaperUrl(redirect("https://arxiv.org/abs/1706.03762v0")),
     null,
+  );
+});
+
+test("redirects reject nonstandard ports, controls and ambiguous destinations", () => {
+  const source = "https://arxiv.org/abs/1706.03762v7";
+  const other = "https://arxiv.org/abs/2505.04421";
+  for (const input of [
+    `https://www.google.com:8443/url?q=${encodeURIComponent(source)}`,
+    redirect("https://arxiv.org/abs/1706.\n03762"),
+    redirect("https://arxiv.org/abs/1706.03762%0a"),
+    `${redirect(source)}&url=${encodeURIComponent(other)}`,
+    `${redirect(source, "q")}&q=${encodeURIComponent(other)}`,
+    `${redirect(source)}&q=${encodeURIComponent(other)}`,
+    `${redirect(source)}&q=`,
+    "https://www.google.com/goto?url=opaque-test-token",
+  ]) {
+    assert.equal(parsePaperUrl(input), null);
+  }
+  assert.equal(
+    parsePaperUrl(`${redirect(source)}&q=${encodeURIComponent(source)}`)
+      .versionedId,
+    "1706.03762v7",
+  );
+  assert.equal(
+    parsePaperUrl("https://arxiv.org:443/abs/1706.03762v7").versionedId,
+    "1706.03762v7",
   );
 });
 
@@ -173,6 +207,15 @@ test("public destinations retain old-style slashes and unversioned identity", ()
   );
   assert.equal(paperUrl({ versionedId: "../evil" }, "en"), null);
   assert.equal(paperUrl(null, "zh"), null);
+  for (const versionedId of [
+    "1706.03762%0a",
+    "1706.03762\n",
+    "1706.03762%00",
+    "1706.03762v" + "1".repeat(2048),
+    42,
+  ]) {
+    assert.equal(paperUrl({ versionedId }, "en"), null);
+  }
 });
 
 test("manifest stays permission-free and loads the pure link helper first", () => {
